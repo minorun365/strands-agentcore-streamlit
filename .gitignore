@@ -1,0 +1,12 @@
+.env
+
+# Python
+__pycache__
+
+# Streamlit
+secrets.toml
+
+# Bedrock AgentCore
+.bedrock_agentcore.yaml
+.dockerignore
+Dockerfile
