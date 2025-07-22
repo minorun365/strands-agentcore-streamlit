@@ -63,7 +63,7 @@ arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
 cd backend
 pip install strands-agents=1.0.1 bedrock-agentcore==0.1.0 bedrock-agentcore-starter-toolkit==0.1.0
 docker run --privileged --rm tonistiigi/binfmt --install arm64
-agentcore configure --entrypoint multiagent.py -er <IAMロールのARN>
+agentcore configure --entrypoint server.py -er <IAMロールのARN>
 agentcore launch
 ```
 
