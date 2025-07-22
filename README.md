@@ -11,6 +11,14 @@
 
 ## 構築手順
 
+### 環境変数のセット
+
+```sh
+export AWS_ACCESS_KEY_ID=xxx
+export AWS_SECRET_ACCESS_KEY=xxx
+export AWS_DEFAULT_REGION=xxx
+```
+
 ### ECRプライベートリポジトリ作成
 
 ```sh
@@ -53,6 +61,8 @@ arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
 
 ```sh
 cd backend
+pip install strands-agents=1.0.1 bedrock-agentcore==0.1.0 bedrock-agentcore-starter-toolkit==0.1.0
+docker run --privileged --rm tonistiigi/binfmt --install arm64
 agentcore configure --entrypoint multiagent.py -er <IAMロールのARN>
 agentcore launch
 ```
@@ -60,5 +70,7 @@ agentcore launch
 ### クライアントを起動
 
 ```sh
+cd ../client
+pip install streamlit
 streamlit run client/gui.py
 ```
