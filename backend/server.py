@@ -1,5 +1,6 @@
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore.memory import MemoryClient
 from dotenv import load_dotenv
 from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp.mcp_client import MCPClient
@@ -8,6 +9,68 @@ import asyncio
 
 # 環境変数を読み込む（ローカル開発用）
 load_dotenv()
+
+# Memory関連のグローバル変数
+memory_client = None
+MEMORY_ID = None
+
+def initialize_memory():
+    """メモリの初期化（アプリ起動時に一度だけ実行）"""
+    global memory_client, MEMORY_ID
+    
+    if memory_client is None:
+        memory_client = MemoryClient(region_name="us-west-2")
+        
+        # デモアプリ用のメモリを作成
+        memory = memory_client.create_memory(
+            name="ChatHistoryMemory",
+            description="Chat history memory for demo app"
+        )
+        MEMORY_ID = memory.get('id')
+        print(f"Memory initialized with ID: {MEMORY_ID}")
+
+async def save_conversation_to_memory(session_id: str, user_message: str, assistant_response: str):
+    """会話をAgentCore Memoryに保存"""
+    global memory_client, MEMORY_ID
+    
+    if memory_client and MEMORY_ID:
+        try:
+            # ユーザーメッセージを保存
+            await memory_client.create_event_async(
+                memory_id=MEMORY_ID,
+                actor_id=f"user_{session_id}",
+                session_id=session_id,
+                messages=[(user_message, "USER")]
+            )
+            
+            # アシスタントレスポンスを保存
+            await memory_client.create_event_async(
+                memory_id=MEMORY_ID,
+                actor_id=f"user_{session_id}",
+                session_id=session_id,
+                messages=[(assistant_response, "ASSISTANT")]
+            )
+        except Exception as e:
+            print(f"Memory save failed: {e}")
+
+async def get_conversation_history(session_id: str, k: int = 5):
+    """過去の会話履歴を取得"""
+    global memory_client, MEMORY_ID
+    
+    if memory_client and MEMORY_ID:
+        try:
+            # 最近のk回の会話を取得
+            recent_turns = await memory_client.get_last_k_turns_async(
+                memory_id=MEMORY_ID,
+                actor_id=f"user_{session_id}",
+                session_id=session_id,
+                k=k
+            )
+            return recent_turns
+        except Exception as e:
+            print(f"Memory retrieval failed: {e}")
+            return []
+    return []
 
 # MCPサーバーを設定
 streamable_http_mcp_client = MCPClient(
@@ -127,7 +190,20 @@ app = BedrockAgentCoreApp()
 async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     global parent_stream_queue
     
-    user_message = payload.get("prompt", "")
+    # メモリの初期化（初回のみ実行）
+    initialize_memory()
+    
+    # AgentCore Runtime形式でのペイロード取得
+    input_data = payload.get("input", {})
+    user_message = input_data.get("prompt", "")
+    session_id = input_data.get("session_id", "default_session")
+    
+    # 過去の会話履歴を取得してコンテキストに追加
+    history = await get_conversation_history(session_id, k=3)
+    if history:
+        context = "過去の会話履歴:\n" + "\n".join([f"{msg['role']}: {msg['content']}" for msg in history]) + "\n\n"
+        user_message = context + user_message
+    
     # ストリームキューを初期化
     parent_stream_queue = asyncio.Queue()
     
@@ -177,9 +253,25 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
                 if agent_task is None and (parent_stream_queue is None or parent_stream_queue.empty()):
                     break
         
+        # レスポンスを蓄積するための変数
+        accumulated_response = ""
+        
         # 統合されたストリームをyield
         async for event in merged_stream():
+            # レスポンステキストを蓄積
+            if isinstance(event, dict) and "event" in event:
+                event_data = event["event"]
+                if "contentBlockDelta" in event_data:
+                    delta = event_data["contentBlockDelta"].get("delta", {})
+                    if "text" in delta:
+                        accumulated_response += delta["text"]
+            
             yield event
+            
+        # 会話終了後にメモリに保存
+        if accumulated_response:
+            original_prompt = input_data.get("prompt", "")
+            await save_conversation_to_memory(session_id, original_prompt, accumulated_response)
             
     except Exception as e:
         raise
