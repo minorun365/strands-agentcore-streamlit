@@ -15,19 +15,47 @@ memory_client = None
 MEMORY_ID = None
 
 def initialize_memory():
-    """メモリの初期化（アプリ起動時に一度だけ実行）"""
+    """メモリの初期化（既存メモリがある場合は再利用）"""
     global memory_client, MEMORY_ID
     
     if memory_client is None:
-        memory_client = MemoryClient(region_name="us-west-2")
-        
-        # デモアプリ用のメモリを作成
-        memory = memory_client.create_memory(
-            name="ChatHistoryMemory",
-            description="Chat history memory for demo app"
-        )
-        MEMORY_ID = memory.get('id')
-        print(f"Memory initialized with ID: {MEMORY_ID}")
+        try:
+            memory_client = MemoryClient(region_name="us-west-2")
+            
+            # まず既存のメモリ一覧を取得して確認
+            try:
+                # 既存メモリがある場合は再利用（デモアプリとしてシンプル）
+                memories = memory_client.list_memories()
+                existing_memory = None
+                
+                # ChatHistoryMemoryという名前のメモリを探す
+                for memory in memories.get('memories', []):
+                    if memory.get('name') == 'ChatHistoryMemory':
+                        existing_memory = memory
+                        break
+                
+                if existing_memory:
+                    MEMORY_ID = existing_memory.get('id')
+                    print(f"Memory found and reused with ID: {MEMORY_ID}")
+                else:
+                    # 新しいメモリを作成
+                    memory = memory_client.create_memory(
+                        name="ChatHistoryMemory",
+                        description="Chat history memory for demo app"
+                    )
+                    MEMORY_ID = memory.get('id')
+                    print(f"New memory created with ID: {MEMORY_ID}")
+                    
+            except Exception as create_error:
+                print(f"Memory operation failed: {create_error}")
+                # メモリ機能なしでも動作を継続
+                memory_client = None
+                MEMORY_ID = None
+                
+        except Exception as client_error:
+            print(f"MemoryClient initialization failed: {client_error}")
+            memory_client = None
+            MEMORY_ID = None
 
 async def save_conversation_to_memory(session_id: str, user_message: str, assistant_response: str):
     """会話をAgentCore Memoryに保存"""
