@@ -186,3 +186,6 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     finally:
         # クリーンアップ
         parent_stream_queue = None
+
+# AgentCoreサーバーを起動
+app.run()

@@ -70,7 +70,7 @@ agentcore launch
 ### クライアントを起動
 
 ```sh
-cd ../client
+cd ..
 pip install streamlit
-streamlit run client/gui.py
+streamlit run frontend/client.py
 ```
