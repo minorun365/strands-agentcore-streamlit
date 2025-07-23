@@ -13,6 +13,7 @@ class StreamProcessor:
         self.parent_stream_queue = queue
     
     async def notify_start(self) -> None:
+        """サブエージェント開始を通知"""
         if self.parent_stream_queue:
             await self.parent_stream_queue.put({
                 "event": {
@@ -24,6 +25,7 @@ class StreamProcessor:
             })
     
     async def notify_complete(self) -> None:
+        """サブエージェント完了を通知"""
         if self.parent_stream_queue:
             await self.parent_stream_queue.put({
                 "event": {
@@ -35,6 +37,7 @@ class StreamProcessor:
             })
     
     async def notify_tool_use(self, tool_name: str) -> None:
+        """ツール使用を通知"""
         if self.parent_stream_queue:
             await self.parent_stream_queue.put({
                 "event": {
@@ -47,6 +50,7 @@ class StreamProcessor:
             })
     
     async def process_agent_stream(self, agent_stream) -> str:
+        """エージェントストリームを処理"""
         self.response = ""
         await self.notify_start()
         
@@ -86,7 +90,7 @@ class StreamProcessor:
             return f"{self.agent_name} failed"
     
     async def process_query_with_context(self, query: str, context_manager, agent_factory):
-        """MCPクライアントのコンテキスト内でクエリ処理を行う"""
+        """コンテキスト管理でクエリ処理"""
         try:
             with context_manager:
                 agent = agent_factory()

@@ -5,10 +5,11 @@ import aiohttp
 import re
 import logging
 from .stream_processor import StreamProcessor
-
 logger = logging.getLogger(__name__)
 
 class JapaneseHolidayAgent:
+    """日本の祝日情報を提供するエージェント"""
+    
     def __init__(self):
         self.stream_processor = StreamProcessor("祝日API")
         self.base_url = "https://holidays-jp.github.io/api/v1"
@@ -17,6 +18,7 @@ class JapaneseHolidayAgent:
         self.stream_processor.set_parent_queue(queue)
     
     async def get_holidays(self, year: Optional[int] = None) -> dict:
+        """祝日APIからデータを取得"""
         url = f"{self.base_url}/{year}/date.json" if year else f"{self.base_url}/date.json"
         try:
             async with aiohttp.ClientSession() as session:
@@ -26,12 +28,15 @@ class JapaneseHolidayAgent:
             return {}
     
     async def process_query(self, query: str) -> str:
+        """ユーザークエリを処理して祝日情報を返す"""
         await self.stream_processor.notify_start()
         
         try:
+            # クエリから年を抽出
             year_match = re.search(r'\b(20\d{2})\b', query)
             year = int(year_match.group(1)) if year_match else None
             
+            # 祝日APIを呼び出し
             await self.stream_processor.notify_tool_use("祝日API")
             holidays = await self.get_holidays(year)
             
@@ -49,6 +54,7 @@ class JapaneseHolidayAgent:
         except Exception:
             return "祝日情報の処理中にエラーが発生しました。"
 
+# グローバルインスタンス
 _holiday_agent = JapaneseHolidayAgent()
 
 def set_parent_stream_queue(queue: Optional[asyncio.Queue]) -> None:

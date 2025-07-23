@@ -3,24 +3,36 @@ import boto3
 import streamlit as st
 from dotenv import load_dotenv
 from stream_processor import process_stream_interactive
+
 load_dotenv()
+
+# AWSクライアント初期化
 agent_core_client = boto3.client('bedrock-agentcore')
+
+# セッション状態初期化
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+# UI表示
 st.title("Strands on AgentCore")
 st.write("AWSのことなら何でも聞いてね！")
+
+# メッセージ履歴表示
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# ユーザー入力処理
 if user_message := st.chat_input("メッセージを入力してください"):
     with st.chat_message("user"):
         st.markdown(user_message)
     st.session_state.messages.append({"role": "user", "content": user_message})
+    
+    # アシスタントレスポンス
     with st.chat_message("assistant"):
         main_container = st.container()
         try:
+            # ストリーミング処理実行
             final_response = asyncio.run(process_stream_interactive(user_message, main_container, agent_core_client))
             if final_response:
                 st.session_state.messages.append({"role": "assistant", "content": final_response})

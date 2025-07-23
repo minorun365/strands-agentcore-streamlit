@@ -7,6 +7,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 class StreamlitStreamProcessor:
+    """Streamlit用ストリーミング表示処理"""
+    
     def __init__(self):
         self.status_containers = []
         self.current_status_placeholder = None
@@ -15,6 +17,7 @@ class StreamlitStreamProcessor:
         self.final_response = ""
     
     def _create_initial_status(self, container):
+        """初期思考ステータス作成"""
         with container:
             thinking_status = st.empty()
             thinking_status.status("エージェントが思考しています…", state="running")
@@ -24,6 +27,7 @@ class StreamlitStreamProcessor:
         return thinking_status
     
     def _handle_sub_agent_progress(self, event, container):
+        """サブエージェント進捗表示処理"""
         progress_info = event["subAgentProgress"]
         message = progress_info.get("message", "サブエージェント処理中...")
         stage = progress_info.get("stage", "processing")
@@ -59,6 +63,7 @@ class StreamlitStreamProcessor:
         self.current_text_placeholder = None
     
     def _handle_content_delta(self, event, container):
+        """テキストデルタ処理"""
         delta = event["contentBlockDelta"]["delta"]
         if "text" not in delta:
             return
@@ -88,6 +93,7 @@ class StreamlitStreamProcessor:
             self.current_text_placeholder.markdown(self.current_segment)
     
     def _finalize_display(self):
+        """表示終了処理"""
         # 最後のテキストセグメントを確定
         if self.current_segment and self.current_text_placeholder:
             self.current_text_placeholder.markdown(self.current_segment)
@@ -97,6 +103,7 @@ class StreamlitStreamProcessor:
             placeholder.status(message, state="complete")
     
     def process_stream_data(self, data, container):
+        """ストリームデータ処理"""
         if not isinstance(data, dict):
             return
         
@@ -108,9 +115,11 @@ class StreamlitStreamProcessor:
             self._handle_content_delta(event, container)
 
 async def process_stream_interactive(user_message, main_container, agent_core_client):
+    """メインストリーミング処理関数"""
     processor = StreamlitStreamProcessor()
     session_id = f"session_{str(uuid.uuid4())}"
     
+    # 初期ステータス表示
     processor._create_initial_status(main_container)
     
     payload = json.dumps({

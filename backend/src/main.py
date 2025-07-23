@@ -11,6 +11,7 @@ from .japanese_holiday_agent import japanese_holiday_agent, set_parent_stream_qu
 load_dotenv()
 
 class AgentManager:
+    """Strandsエージェント管理クラス"""
     def __init__(self):
         self.agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
@@ -22,12 +23,17 @@ class AgentManager:
             callback_handler=None
         )
 
+# BedrockAgentCoreアプリケーション初期化
 app = BedrockAgentCoreApp()
 agent_manager = AgentManager()
+
 @app.entrypoint
 async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
+    """メインエントリポイント"""
     input_data = payload.get("input", {})
     user_message = input_data.get("prompt", "")
+    
+    # サブエージェント用キュー初期化
     parent_stream_queue = asyncio.Queue()
     set_knowledge_queue(parent_stream_queue)
     set_holiday_queue(parent_stream_queue)
@@ -36,6 +42,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
         agent_stream = agent_manager.agent.stream_async(user_message)
         
         async def merged_stream():
+            """メインストリームとサブエージェントストリームを統合"""
             agent_task = asyncio.create_task(anext(agent_stream, None))
             queue_task = asyncio.create_task(parent_stream_queue.get())
             pending_tasks = {agent_task, queue_task}
@@ -61,6 +68,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
                         except Exception:
                             queue_task = None
                 
+                # メインストリーム終了確認
                 if agent_task is None and (parent_stream_queue is None or parent_stream_queue.empty()):
                     break
         
@@ -70,6 +78,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     except Exception:
         raise
     finally:
+        # キュークリーンアップ
         set_knowledge_queue(None)
         set_holiday_queue(None)
 

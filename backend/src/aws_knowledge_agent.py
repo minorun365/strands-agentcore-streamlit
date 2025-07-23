@@ -6,12 +6,15 @@ import asyncio
 from .stream_processor import StreamProcessor
 
 class AWSKnowledgeAgentManager:
+    """AWSナレッジエージェント管理クラス"""
+    
     def __init__(self):
         self.mcp_client: Optional[MCPClient] = None
         self.stream_processor = StreamProcessor("AWSナレッジ")
         self._initialize_mcp_client()
     
     def _initialize_mcp_client(self) -> None:
+        """MCPクライアント初期化"""
         try:
             self.mcp_client = MCPClient(
                 lambda: streamablehttp_client("https://knowledge-mcp.global.api.aws")
@@ -23,6 +26,7 @@ class AWSKnowledgeAgentManager:
         self.stream_processor.set_parent_queue(queue)
     
     def create_agent(self) -> Agent:
+        """AWSナレッジエージェント作成"""
         if not self.mcp_client:
             raise RuntimeError("AWS Knowledge MCP client is not available")
         return Agent(
@@ -31,6 +35,7 @@ class AWSKnowledgeAgentManager:
         )
     
     async def process_query(self, query: str) -> str:
+        """AWSナレッジクエリ処理"""
         if not self.mcp_client:
             return "AWS Knowledge MCP client is not available"
         try:
@@ -40,6 +45,7 @@ class AWSKnowledgeAgentManager:
         except Exception:
             return "AWS Knowledge MCP client is not available"
 
+# グローバルインスタンス
 _knowledge_manager = AWSKnowledgeAgentManager()
 
 def set_parent_stream_queue(queue: Optional[asyncio.Queue]) -> None:
