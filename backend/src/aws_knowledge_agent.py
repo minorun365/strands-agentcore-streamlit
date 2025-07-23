@@ -37,13 +37,13 @@ class AWSKnowledgeAgentManager:
     async def process_query(self, query: str) -> str:
         """AWSナレッジクエリ処理"""
         if not self.mcp_client:
-            return "AWS Knowledge MCP client is not available"
+            return "処理に失敗しました"
         try:
             return await self.stream_processor.process_query_with_context(
                 query, self.mcp_client, self.create_agent
             )
         except Exception:
-            return "AWS Knowledge MCP client is not available"
+            return "処理に失敗しました"
 
 # グローバルインスタンス
 _knowledge_manager = AWSKnowledgeAgentManager()

@@ -3,9 +3,7 @@ from typing import Optional
 import asyncio
 import aiohttp
 import re
-import logging
 from .stream_processor import StreamProcessor
-logger = logging.getLogger(__name__)
 
 class JapaneseHolidayAgent:
     """日本の祝日情報を提供するエージェント"""

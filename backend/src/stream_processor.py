@@ -87,7 +87,7 @@ class StreamProcessor:
             await self.notify_complete()
             return self.response
         except Exception:
-            return f"{self.agent_name} failed"
+            return f"{self.agent_name}エージェントの処理に失敗しました"
     
     async def process_query_with_context(self, query: str, context_manager, agent_factory):
         """コンテキスト管理でクエリ処理"""
@@ -97,4 +97,4 @@ class StreamProcessor:
                 agent_stream = agent.stream_async(query)
                 return await self.process_agent_stream(agent_stream)
         except Exception:
-            return f"{self.agent_name} Agent failed"
+            return f"{self.agent_name}エージェントの処理に失敗しました"

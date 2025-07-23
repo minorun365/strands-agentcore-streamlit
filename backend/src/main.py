@@ -3,9 +3,6 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from dotenv import load_dotenv
 from typing import AsyncGenerator, Any, Dict
 import asyncio
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 from .aws_knowledge_agent import aws_knowledge_agent, set_parent_stream_queue as set_knowledge_queue
 from .japanese_holiday_agent import japanese_holiday_agent, set_parent_stream_queue as set_holiday_queue
 load_dotenv()
@@ -75,8 +72,6 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
         async for event in merged_stream():
             yield event
             
-    except Exception:
-        raise
     finally:
         # キュークリーンアップ
         set_knowledge_queue(None)

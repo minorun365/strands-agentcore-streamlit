@@ -2,9 +2,6 @@ import streamlit as st
 import json
 import os
 import uuid
-import logging
-
-logger = logging.getLogger(__name__)
 
 class StreamlitStreamProcessor:
     """Streamlit用ストリーミング表示処理"""
@@ -31,12 +28,6 @@ class StreamlitStreamProcessor:
         progress_info = event["subAgentProgress"]
         message = progress_info.get("message", "サブエージェント処理中...")
         stage = progress_info.get("stage", "processing")
-        
-        # 思考状態の完了処理
-        if self.status_containers and stage == "start":
-            first_status, first_message = self.status_containers[0]
-            if "思考しています" in first_message:
-                first_status.status("エージェントが回答方針を決定しました", state="complete")
         
         # 前のステータスを完了状態にする（重要：スピナー回りっぱなし防止）
         if self.current_status_placeholder:
@@ -68,11 +59,11 @@ class StreamlitStreamProcessor:
         if "text" not in delta:
             return
         
-        # 思考状態の完了処理（直接回答開始時）
+        # テキスト出力開始時に思考状態を完了にする
         if self.status_containers and self.current_text_placeholder is None:
             first_status, first_message = self.status_containers[0]
             if "思考しています" in first_message:
-                first_status.status("エージェントが回答を開始しました", state="complete")
+                first_status.status("エージェントが思考しています…", state="complete")
         
         # 現在のステータスを完了状態に
         if self.current_status_placeholder and self.current_text_placeholder is None:
@@ -151,6 +142,5 @@ async def process_stream_interactive(user_message, main_container, agent_core_cl
         return processor.final_response
         
     except Exception as e:
-        logger.error(f"ストリーミング処理エラー: {e}")
         st.error(f"エラーが発生しました: {e}")
         return ""
