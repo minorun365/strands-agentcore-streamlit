@@ -23,7 +23,7 @@ class StreamlitStreamProcessor:
     def _handle_sub_agent_progress(self, event, container):
         """サブエージェント進捗表示処理"""
         progress_info = event["subAgentProgress"]
-        message = progress_info.get("message", "サブエージェント処理中...")
+        message = progress_info.get("message")
         stage = progress_info.get("stage", "processing")
         
         # 前のステータスを完了状態にする（重要：スピナー回りっぱなし防止）
