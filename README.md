@@ -4,7 +4,7 @@
 
 - Supervisor
   - サブエージェント1（AWS Knowledge MCP）
-  - サブエージェント2（AWS API MCP）
+  - サブエージェント2（日本の祝日API）
 
 
 ## 構築手順
