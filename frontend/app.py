@@ -40,6 +40,11 @@ if user_message := st.chat_input("メッセージを入力してください"):
         user_message
     )
     
+    # ユーザーが質問した時点で、タイトルを即座に更新（AI応答中のスレッド切り替えに対応）
+    if st.session_state.current_thread_title == "現在の会話":
+        title = auto_generate_title(user_message)
+        update_thread_title(st.session_state.current_thread_id, title)
+    
     # アシスタントの応答を表示
     with st.chat_message("assistant"):
         main_container = st.container()
@@ -58,10 +63,7 @@ if user_message := st.chat_input("メッセージを入力してください"):
                     final_response
                 )
                 
-                # 新しい会話の場合、タイトルを自動生成
-                if st.session_state.current_thread_title == "新しい会話":
-                    title = auto_generate_title(user_message)
-                    update_thread_title(st.session_state.current_thread_id, title)
+                # タイトル更新は既にユーザーメッセージ送信時に実行済み
 
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
