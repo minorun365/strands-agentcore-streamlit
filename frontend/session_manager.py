@@ -6,9 +6,8 @@ from memory_helper import get_session_history
 def generate_session_id():
     """新しいセッションIDを生成（AgentCore Runtime要件を満たす33文字以上）"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = str(uuid.uuid4())[:12]  # 8文字→12文字に増加
+    unique_id = str(uuid.uuid4())[:12]
     session_id = f"session_{timestamp}_{unique_id}"
-    print(f"🔍 [SESSION DEBUG] Generated new session ID: {session_id} (length: {len(session_id)})")
     return session_id
 
 def initialize_session_state():
@@ -22,16 +21,14 @@ def initialize_session_state():
     
     # セッションID（可変：新しい会話ごとに生成）
     if 'current_thread_id' not in st.session_state:
-        # リロード後は常に新規セッションで開始（「新しい会話を始める」ボタンと同じ動作）
+        # リロード後は常に新規セッションで開始
         st.session_state.current_thread_id = generate_session_id()
-        print("🔍 [SESSION DEBUG] Started with new session (reload behavior)")
         
         # 初期の「現在の会話」をサイドバーに表示するため、threadsに追加
         st.session_state.threads[st.session_state.current_thread_id] = {
             'title': '現在の会話',
             'messages': []
         }
-        print(f"🔍 [SESSION DEBUG] Added initial 'new conversation' to sidebar: {st.session_state.current_thread_id}")
     
     if 'current_thread_title' not in st.session_state:
         st.session_state.current_thread_title = "現在の会話"
@@ -40,16 +37,9 @@ def initialize_session_state():
     if 'cache_cleared' not in st.session_state:
         try:
             st.cache_data.clear()
-            print("🔍 [SESSION DEBUG] Cache cleared on reload")
-        except Exception as e:
-            print(f"⚠️ [SESSION DEBUG] Cache clear failed: {e}")
+        except Exception:
+            pass
         st.session_state.cache_cleared = True
-        
-        # 強制的にget_available_sessionsを再実行（デバッグ用）
-        print("🔍 [SESSION DEBUG] Force calling get_available_sessions for debug...")
-        from memory_helper import get_available_sessions
-        debug_sessions = get_available_sessions()
-        print(f"🔍 [SESSION DEBUG] Debug sessions result: {debug_sessions}")
     
     # メモリから履歴を復元（初回のみ）
     if 'memory_restored' not in st.session_state:
@@ -62,7 +52,6 @@ def create_new_thread():
     if (st.session_state.current_thread_title == "現在の会話" and 
         st.session_state.current_thread_id in st.session_state.threads and
         len(st.session_state.threads[st.session_state.current_thread_id]['messages']) == 0):
-        print(f"🔍 [SESSION DEBUG] Current thread is empty, not creating new thread")
         return st.session_state.current_thread_id
     
     new_session_id = generate_session_id()
@@ -77,12 +66,10 @@ def create_new_thread():
             'title': '現在の会話',
             'messages': []
         }
-        # 既存のスレッドを後に追加
         for thread_id, thread_data in st.session_state.threads.items():
             new_threads[thread_id] = thread_data
         st.session_state.threads = dict(new_threads)
     else:
-        # 初回作成の場合
         st.session_state.threads = {
             new_session_id: {
                 'title': '現在の会話',
@@ -90,7 +77,6 @@ def create_new_thread():
             }
         }
     
-    print(f"🔍 [SESSION DEBUG] Created new thread: {new_session_id}")
     return new_session_id
 
 def switch_to_thread(thread_id, thread_title):
@@ -137,9 +123,7 @@ def render_sidebar():
         if st.session_state.threads:
             st.subheader("会話履歴")
             
-            # スレッド一覧を表示（st.session_state.threadsの順序をそのまま使用）
-            # 注意：restore_session_from_memory()で既に新しい順に整列済み
-            print(f"🔍 [SIDEBAR DEBUG] Displaying threads in stored order: {list(st.session_state.threads.keys())}")
+            # スレッド一覧を表示
             
             for thread_id, thread_data in st.session_state.threads.items():
                 # 現在のスレッドかどうかでスタイルを変更
@@ -175,44 +159,33 @@ def restore_session_from_memory():
     try:
         from memory_helper import get_available_sessions
         
-        # 利用可能な全セッションを取得
         available_sessions = get_available_sessions()
-        print(f"🔍 [SESSION DEBUG] Found {len(available_sessions)} available sessions: {available_sessions}")
-        
-        if not available_sessions or len(available_sessions) == 0:
-            print("⚠️ [SESSION DEBUG] No sessions found in memory")
+        if not available_sessions:
             return
         
-        # 現在のセッションは新規なので、全ての既存セッションをサイドバーに復元
-        # 注意：available_sessionsは既にget_available_sessions()で新しい順にソート済み
-        print(f"🔍 [SESSION DEBUG] Restoring {len(available_sessions)} sessions to sidebar (already sorted newest first)")
-        
-        # 現在の「新しい会話」を保持
+        # 現在の「現在の会話」を保持
         current_new_thread_id = st.session_state.current_thread_id
         current_new_thread = st.session_state.threads.get(current_new_thread_id, {
             'title': '現在の会話',
             'messages': []
         })
         
-        # 各セッションをタイムスタンプ順で復元（OrderedDictを使用して挿入順序を制御）
+        # 各セッションを復元
         from collections import OrderedDict
         temp_threads = OrderedDict()
         
-        # 最初に現在の「新しい会話」を追加
+        # 最初に現在の会話を追加
         temp_threads[current_new_thread_id] = current_new_thread
-        print(f"🔍 [SESSION DEBUG] Placed current new conversation first: {current_new_thread_id}")
         
         for session_id in available_sessions:
             try:
                 session_history = get_session_history(session_id, k=20)
                 
                 if session_history and len(session_history) > 0:
-                    # スレッドIDを生成
                     thread_id = f"session_{session_id}"
                     
-                    # 現在の新しい会話と重複しないようにスキップ
+                    # 重複回避
                     if thread_id == current_new_thread_id:
-                        print(f"🔍 [SESSION DEBUG] Skipping duplicate current thread: {thread_id}")
                         continue
                     
                     # タイトルを最初のユーザーメッセージから生成
@@ -222,26 +195,17 @@ def restore_session_from_memory():
                             thread_title = auto_generate_title(msg['content'])
                             break
                     
-                    # 一時的なOrderedDictに追加（already_sessions are in newest-first order）
                     temp_threads[thread_id] = {
                         'title': thread_title,
                         'messages': session_history
                     }
                     
-                    print(f"🔍 [SESSION DEBUG] Restored session {session_id}: {thread_title} ({len(session_history)} messages)")
-                    
-            except Exception as session_error:
-                print(f"⚠️ [SESSION DEBUG] Failed to restore session {session_id}: {session_error}")
+            except Exception:
                 continue
         
-        # OrderedDictをst.session_state.threadsに設定（順序を保持）
         st.session_state.threads = dict(temp_threads)
         
-        print(f"🔍 [SESSION DEBUG] Session restoration completed. Total threads: {len(st.session_state.threads)}")
-        
-    except Exception as e:
-        print(f"❌ [SESSION DEBUG] Error restoring sessions: {e}")
-        # エラーは静かに無視（メモリ機能がない場合など）
+    except Exception:
         pass
 
 def auto_generate_title(user_message):

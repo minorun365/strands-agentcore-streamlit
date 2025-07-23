@@ -63,7 +63,7 @@ if user_message := st.chat_input("メッセージを入力してください"):
                     final_response
                 )
                 
-                # タイトル更新は既にユーザーメッセージ送信時に実行済み
+                # 会話保存処理（必要に応じて追加のロジック）
 
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
