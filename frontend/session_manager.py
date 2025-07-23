@@ -1,7 +1,7 @@
 import streamlit as st
 import uuid
 from datetime import datetime
-from memory_helper import get_session_history
+from memory_manager import get_session_history
 
 
 def initialize_session_state():
@@ -170,7 +170,7 @@ def render_chat_history():
 def restore_session_from_memory():
     """AgentCore Memoryから過去の全セッション履歴を復元"""
     try:
-        from memory_helper import get_available_sessions
+        from memory_manager import get_available_sessions
         
         available_sessions = get_available_sessions()
         if not available_sessions:
