@@ -28,20 +28,24 @@ class StreamlitStreamProcessor:
         message = progress_info.get("message", "サブエージェント処理中...")
         stage = progress_info.get("stage", "processing")
         
+        # 思考状態の完了処理
         if self.status_containers and stage == "start":
             first_status, first_message = self.status_containers[0]
             if "思考しています" in first_message:
                 first_status.status("エージェントが回答方針を決定しました", state="complete")
         
+        # 前のステータスを完了状態にする（重要：スピナー回りっぱなし防止）
         if self.current_status_placeholder:
             placeholder, original_message = self.current_status_placeholder
             placeholder.status(original_message, state="complete")
         
+        # 現在のテキストセグメントを確定
         if self.current_segment and self.current_text_placeholder:
             self.current_text_placeholder.markdown(self.current_segment)
             self.final_response += self.current_segment
             self.current_segment = ""
         
+        # 新しいステータス表示
         with container:
             status_placeholder = st.empty()
             state = "complete" if stage == "complete" else "running"
@@ -50,6 +54,8 @@ class StreamlitStreamProcessor:
         status_info = (status_placeholder, message)
         self.status_containers.append(status_info)
         self.current_status_placeholder = status_info
+        
+        # テキストプレースホルダーをリセット
         self.current_text_placeholder = None
     
     def _handle_content_delta(self, event, container):
@@ -57,19 +63,23 @@ class StreamlitStreamProcessor:
         if "text" not in delta:
             return
         
+        # 思考状態の完了処理（直接回答開始時）
         if self.status_containers and self.current_text_placeholder is None:
             first_status, first_message = self.status_containers[0]
             if "思考しています" in first_message:
                 first_status.status("エージェントが回答を開始しました", state="complete")
         
+        # 現在のステータスを完了状態に
         if self.current_status_placeholder and self.current_text_placeholder is None:
             placeholder, original_message = self.current_status_placeholder
             placeholder.status(original_message, state="complete")
         
+        # テキスト処理
         text = delta["text"]
         self.current_segment += text
         self.final_response += text
         
+        # テキストコンテナの作成・更新
         if self.current_text_placeholder is None:
             with container:
                 self.current_text_placeholder = st.empty()
@@ -78,9 +88,11 @@ class StreamlitStreamProcessor:
             self.current_text_placeholder.markdown(self.current_segment)
     
     def _finalize_display(self):
+        # 最後のテキストセグメントを確定
         if self.current_segment and self.current_text_placeholder:
             self.current_text_placeholder.markdown(self.current_segment)
         
+        # 全ステータスを完了状態に
         for placeholder, message in self.status_containers:
             placeholder.status(message, state="complete")
     
