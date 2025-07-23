@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import uuid
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 import logging
@@ -123,20 +124,15 @@ class StreamlitStreamProcessor:
 async def process_stream(user_message, container, agent_core_client):
     """シンプルなストリーミング処理（従来の info 形式）"""
     
-    session_id = st.session_state.current_thread_id
+    # AWS Bedrock AgentCore用の適切な長さのセッションIDを生成
+    session_id = f"session_{str(uuid.uuid4())}"
     response = ""
     
     # 思考状態を表示
     thinking_info = container.info("エージェントが思考しています…")
     text_holder = container.empty()
     
-    # ユーザーメッセージをスレッド履歴に追加
-    if st.session_state.current_thread_id in st.session_state.threads:
-        st.session_state.threads[st.session_state.current_thread_id]['messages'].append({
-            'role': 'user',
-            'content': user_message,
-            'timestamp': datetime.now().isoformat()
-        })
+    # スレッド機能は削除済み
     
     # エージェント呼び出し
     payload = json.dumps({
@@ -200,13 +196,7 @@ async def process_stream(user_message, container, agent_core_client):
                 logger.warning(f"JSON デコードエラー: {line}")
                 continue
         
-        # アシスタントの回答をスレッド履歴に追加
-        if response and st.session_state.current_thread_id in st.session_state.threads:
-            st.session_state.threads[st.session_state.current_thread_id]['messages'].append({
-                'role': 'assistant',
-                'content': response,
-                'timestamp': datetime.now().isoformat()
-            })
+        # スレッド機能は削除済み
             
     except Exception as e:
         logger.error(f"ストリーミング処理エラー: {e}")
@@ -219,7 +209,8 @@ async def process_stream_interactive(user_message, main_container, agent_core_cl
     
     # 新しいプロセッサーインスタンスを作成（各リクエスト毎にリセット）
     processor = StreamlitStreamProcessor()
-    session_id = st.session_state.current_thread_id
+    # AWS Bedrock AgentCore用の適切な長さのセッションIDを生成
+    session_id = f"session_{str(uuid.uuid4())}"
     
     # 初期思考状態を作成
     processor._create_initial_status(main_container)

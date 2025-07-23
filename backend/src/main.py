@@ -11,16 +11,14 @@ logger = logging.getLogger(__name__)
 # 各モジュールからインポート
 from .aws_knowledge_agent import aws_knowledge_agent, set_parent_stream_queue as set_knowledge_queue
 from .japanese_holiday_agent import japanese_holiday_agent, set_parent_stream_queue as set_holiday_queue
-from .memory_manager import UnifiedMemoryManager
 
 # 環境変数を読み込む（ローカル開発用）
 load_dotenv()
 
 class AgentManager:
-    """エージェントとメモリ関連機能を管理するクラス（改善版）"""
+    """エージェントを管理するクラス（シンプル版）"""
     
     def __init__(self):
-        self.memory_manager = UnifiedMemoryManager()
         # Strands Agents 1.0.1の新機能を活用した効率的なエージェント設定
         self.agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
@@ -31,17 +29,8 @@ class AgentManager:
 2. 祝日APIエージェント: 日本の祝日情報を提供（デモ用シンプルAPI）
 
 効率的にサブエージェントを使い分けて、正確で実用的な回答を提供してください。""",
-            # Strands 1.0.1の新機能：メモリプロバイダー統合
             callback_handler=None  # ストリーミングはコールバックではなく直接処理
         )
-    
-    def get_conversation_history_with_context(self, session_id: str, k: int = 3) -> str:
-        """会話履歴を取得してコンテキスト文字列として返す（改善版）"""
-        return self.memory_manager.get_conversation_history_as_context(session_id, k=k)
-    
-    def save_conversation(self, session_id: str, user_message: str, response: str):
-        """会話をメモリに保存"""
-        self.memory_manager.save_conversation(session_id, user_message, response)
 
 # AgentCoreを初期化
 app = BedrockAgentCoreApp()
@@ -58,12 +47,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     user_message = input_data.get("prompt", "")
     session_id = input_data.get("session_id", "default_session")
     
-    # 過去の会話履歴を取得してコンテキストに追加
-    logger.info(f"セッション {session_id} の履歴取得開始")
-    context = agent_manager.get_conversation_history_with_context(session_id, k=5)
-    logger.info(f"履歴取得完了: {len(context)} 文字")
-    if context:
-        user_message = context + user_message
+    # メモリ機能を削除したため、過去の会話履歴は使用しない
     
     # ストリームキューを初期化
     parent_stream_queue = asyncio.Queue()
@@ -76,8 +60,6 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     
     try:
         # Strands Agents 1.0.1の改善されたストリーミング処理
-        accumulated_response = ""
-        original_prompt = input_data.get("prompt", "")
         
         # リアルタイムストリーミングを実現する改善版merged_stream
         agent_stream = agent_manager.agent.stream_async(user_message)
@@ -106,15 +88,6 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
                         # メインエージェントイベント処理
                         event = completed_task.result()
                         if event is not None:
-                            # テキスト蓄積処理
-                            if isinstance(event, dict) and "event" in event:
-                                event_data = event["event"]
-                                if "contentBlockDelta" in event_data:
-                                    delta = event_data["contentBlockDelta"].get("delta", {})
-                                    if "text" in delta:
-                                        nonlocal accumulated_response
-                                        accumulated_response += delta["text"]
-                            
                             yield event
                             
                             # 次のエージェントイベントを待機
@@ -151,10 +124,6 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
         # 改善されたストリーム統合を実行
         async for event in improved_merged_stream():
             yield event
-            
-        # 会話をメモリに保存
-        if accumulated_response:
-            agent_manager.save_conversation(session_id, original_prompt, accumulated_response)
             
     except Exception:
         raise
