@@ -1,4 +1,4 @@
-# Bedrock AgentCore マルチエージェント
+# Strands on AgentCore with Streamlit（シンプル版）
 
 ## エージェント構成（サンプル）
 
