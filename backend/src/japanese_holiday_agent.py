@@ -57,7 +57,7 @@ class JapaneseHolidayAgent:
                 response += f"例: 「{current_datetime.year}年の祝日」「{current_datetime.year + 1}年の祝日」など"
                 
                 await self.stream_processor.notify_complete()
-                self.stream_processor.accumulated_response = response
+                self.stream_processor.response = response
                 return response
             
             # クエリから年を抽出しようと試みる
@@ -87,7 +87,7 @@ class JapaneseHolidayAgent:
                     response += f"- {date}: {holiday_name}\n"
             
             await self.stream_processor.notify_complete()
-            self.stream_processor.accumulated_response = response
+            self.stream_processor.response = response
             return response
             
         except Exception as e:
