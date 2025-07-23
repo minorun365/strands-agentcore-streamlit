@@ -1,7 +1,5 @@
+import os, json, uuid
 import streamlit as st
-import json
-import os
-import uuid
 
 class StreamlitStreamProcessor:
     """Streamlit用ストリーミング表示処理"""
@@ -49,9 +47,8 @@ class StreamlitStreamProcessor:
     def _handle_content_delta(self, event, container):
         """テキストデルタ処理"""
         delta = event["contentBlockDelta"]["delta"]
-        if "text" not in delta:
-            return
-        
+        if "text" not in delta: return
+
         # テキスト出力開始時にステータスを完了にする
         if self.current_text_placeholder is None:
             if self.status_containers:
@@ -70,7 +67,6 @@ class StreamlitStreamProcessor:
         if self.current_text_placeholder is None:
             with container:
                 self.current_text_placeholder = st.empty()
-        
         if self.current_text_placeholder:
             self.current_text_placeholder.markdown(self.final_response)
     
@@ -78,19 +74,15 @@ class StreamlitStreamProcessor:
         """表示終了処理"""
         # 最後のテキストを確定
         if self.current_text_placeholder:
-            self.current_text_placeholder.markdown(self.final_response)
-        
+            self.current_text_placeholder.markdown(self.final_response)        
         # 全ステータスを完了状態に
         for placeholder, message in self.status_containers:
             placeholder.status(message, state="complete")
     
     def process_stream_data(self, data, container):
         """ストリームデータ処理"""
-        if not isinstance(data, dict):
-            return
-        
+        if not isinstance(data, dict): return
         event = data.get("event", {})
-        
         if "subAgentProgress" in event:
             self._handle_sub_agent_progress(event, container)
         elif "contentBlockDelta" in event:
@@ -118,11 +110,9 @@ async def process_stream_interactive(user_message, main_container, agent_core_cl
             payload=payload,
             qualifier="DEFAULT"
         )
-        
         for line in agent_response["response"].iter_lines():
             if not line or not line.decode("utf-8").startswith("data: "):
                 continue
-            
             try:
                 data = json.loads(line.decode("utf-8")[6:])
                 processor.process_stream_data(data, main_container)
@@ -131,7 +121,7 @@ async def process_stream_interactive(user_message, main_container, agent_core_cl
         
         processor._finalize_display()
         return processor.final_response
-        
+    
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
         return ""

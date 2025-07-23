@@ -1,8 +1,6 @@
+import asyncio, aiohttp, re
 from strands import tool
 from typing import Optional
-import asyncio
-import aiohttp
-import re
 from .stream_processor import StreamProcessor
 
 class JapaneseHolidayAgent:
@@ -49,6 +47,7 @@ class JapaneseHolidayAgent:
             await self.stream_processor.notify_complete()
             self.stream_processor.response = response
             return response
+        
         except Exception:
             return "祝日情報の処理中にエラーが発生しました。"
 

@@ -27,8 +27,7 @@ agent_manager = AgentManager()
 @app.entrypoint
 async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     """メインエントリポイント"""
-    input_data = payload.get("input", {})
-    user_message = input_data.get("prompt", "")
+    user_message = payload.get("input", {}).get("prompt", "")
     
     # サブエージェント用キュー初期化
     parent_stream_queue = asyncio.Queue()
@@ -54,16 +53,15 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
                             yield event
                             agent_task = asyncio.create_task(anext(agent_stream, None))
                             pending_tasks.add(agent_task)
-                        else:
-                            agent_task = None
+                        else: agent_task = None
+                        
                     elif completed_task == queue_task:
                         try:
                             sub_event = completed_task.result()
                             yield sub_event
                             queue_task = asyncio.create_task(parent_stream_queue.get())
                             pending_tasks.add(queue_task)
-                        except Exception:
-                            queue_task = None
+                        except Exception: queue_task = None
                 
                 # メインストリーム終了確認
                 if agent_task is None and (parent_stream_queue is None or parent_stream_queue.empty()):

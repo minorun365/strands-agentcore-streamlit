@@ -82,9 +82,10 @@ class StreamProcessor:
                             self.response += delta["text"]
                     if self.parent_stream_queue:
                         await self.parent_stream_queue.put(event)
-            
+
             await self.notify_complete()
             return self.response
+        
         except Exception:
             return f"{self.agent_name}エージェントの処理に失敗しました"
     

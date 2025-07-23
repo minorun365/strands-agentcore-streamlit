@@ -1,8 +1,8 @@
-from strands import Agent, tool
-from mcp.client.streamable_http import streamablehttp_client
-from strands.tools.mcp.mcp_client import MCPClient
-from typing import Optional
 import asyncio
+from typing import Optional
+from strands import Agent, tool
+from strands.tools.mcp.mcp_client import MCPClient
+from mcp.client.streamable_http import streamablehttp_client
 from .stream_processor import StreamProcessor
 
 class AWSKnowledgeAgentManager:
@@ -36,8 +36,7 @@ class AWSKnowledgeAgentManager:
     
     async def process_query(self, query: str) -> str:
         """AWSナレッジクエリ処理"""
-        if not self.mcp_client:
-            return "処理に失敗しました"
+        if not self.mcp_client: return "処理に失敗しました"
         return await self.stream_processor.process_query_with_context(
             query, self.mcp_client, self.create_agent
         )
