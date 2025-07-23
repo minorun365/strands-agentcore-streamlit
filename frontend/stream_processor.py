@@ -14,9 +14,9 @@ class StreamlitStreamProcessor:
         """初期思考ステータス作成"""
         with container:
             thinking_status = st.empty()
-            thinking_status.status("エージェントが思考しています…", state="running")
+            thinking_status.status("エージェントが思考しています", state="running")
         
-        status_info = (thinking_status, "エージェントが思考しています…")
+        status_info = (thinking_status, "エージェントが思考しています")
         self.status_containers.append(status_info)
         return thinking_status
     
@@ -54,7 +54,7 @@ class StreamlitStreamProcessor:
             if self.status_containers:
                 first_status, first_message = self.status_containers[0]
                 if "思考しています" in first_message:
-                    first_status.status("エージェントが思考しています…", state="complete")
+                    first_status.status("エージェントが思考しています", state="complete")
             if self.current_status_placeholder:
                 placeholder, original_message = self.current_status_placeholder
                 placeholder.status(original_message, state="complete")
