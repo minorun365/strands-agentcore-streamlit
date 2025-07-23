@@ -30,7 +30,7 @@ class StreamProcessor:
             await self.parent_stream_queue.put({
                 "event": {
                     "subAgentProgress": {
-                        "message": f"{self.agent_name}エージェントが調査を完了しました",
+                        "message": f"サブエージェント「{self.agent_name}」が調査を完了しました",
                         "stage": "complete"
                     }
                 }
@@ -42,7 +42,7 @@ class StreamProcessor:
             await self.parent_stream_queue.put({
                 "event": {
                     "subAgentProgress": {
-                        "message": f"{self.agent_name}ツール「{tool_name}」を実行中",
+                        "message": f"サブエージェント「{self.agent_name}」がツール「{tool_name}」を実行中",
                         "stage": "tool_use",
                         "tool_name": tool_name
                     }
