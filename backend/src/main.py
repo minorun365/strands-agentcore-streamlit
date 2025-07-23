@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # 各モジュールからインポート
 from .aws_knowledge_agent import aws_knowledge_agent, set_parent_stream_queue as set_knowledge_queue
-from .aws_api_agent import aws_api_agent, set_parent_stream_queue as set_api_queue
+from .japanese_holiday_agent import japanese_holiday_agent, set_parent_stream_queue as set_holiday_queue
 from .memory_manager import UnifiedMemoryManager
 
 # 環境変数を読み込む（ローカル開発用）
@@ -24,11 +24,11 @@ class AgentManager:
         # Strands Agents 1.0.1の新機能を活用した効率的なエージェント設定
         self.agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            tools=[aws_knowledge_agent, aws_api_agent],
+            tools=[aws_knowledge_agent, japanese_holiday_agent],
             system_prompt="""あなたは2つの専門サブエージェントを活用するAWSエキスパートです：
 
 1. AWSナレッジエージェント: AWS公式ドキュメントから一般的な情報を検索
-2. AWS APIエージェント: 実際のAWS環境を調査・操作
+2. 祝日APIエージェント: 日本の祝日情報を提供（デモ用シンプルAPI）
 
 効率的にサブエージェントを使い分けて、正確で実用的な回答を提供してください。""",
             # Strands 1.0.1の新機能：メモリプロバイダー統合
@@ -59,7 +59,9 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     session_id = input_data.get("session_id", "default_session")
     
     # 過去の会話履歴を取得してコンテキストに追加
+    logger.info(f"セッション {session_id} の履歴取得開始")
     context = agent_manager.get_conversation_history_with_context(session_id, k=5)
+    logger.info(f"履歴取得完了: {len(context)} 文字")
     if context:
         user_message = context + user_message
     
@@ -67,8 +69,10 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     parent_stream_queue = asyncio.Queue()
     
     # サブエージェントにストリームキューを設定
+    logger.info("サブエージェント用ストリームキューを設定")
     set_knowledge_queue(parent_stream_queue)
-    set_api_queue(parent_stream_queue)
+    set_holiday_queue(parent_stream_queue)
+    logger.info("ストリームキュー設定完了")
     
     try:
         # Strands Agents 1.0.1の改善されたストリーミング処理
@@ -125,6 +129,8 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
                         try:
                             sub_event = completed_task.result()
                             logger.info(f"リアルタイムサブエージェントイベント: {sub_event}")
+                            
+                            # サブエージェントイベントをそのまま出力（AgentCore Runtime形式）
                             yield sub_event
                             
                             # 次のキューイベントを待機（キューが存在する場合）
@@ -154,7 +160,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
         raise
     finally:
         set_knowledge_queue(None)
-        set_api_queue(None)
+        set_holiday_queue(None)
 
 # AgentCore Runtimeサーバーを起動
 if __name__ == "__main__":

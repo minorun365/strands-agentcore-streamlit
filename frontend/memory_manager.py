@@ -1,6 +1,6 @@
 import boto3
 from bedrock_agentcore.memory import MemoryClient
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import streamlit as st
 import logging
 
@@ -14,7 +14,7 @@ class StreamlitMemoryManager:
         self.region_name = region_name
         self._memory_client: Optional[MemoryClient] = None
         self._memory_id: Optional[str] = None
-        self._agentcore_client = None
+        self._agentcore_client: Optional[Any] = None
         self._initialized = False
     
     def initialize(self) -> bool:
@@ -45,15 +45,17 @@ class StreamlitMemoryManager:
             self._initialized = True
             return False
     
-    @st.cache_data(ttl=10, show_spinner=False)
-    def get_session_history(_self, session_id: str, k: int = 10) -> List[Dict]:
-        """指定されたセッションの会話履歴を取得（Streamlitキャッシュ付き）"""
-        if not _self.initialize():
+    def get_session_history(self, session_id: str, k: int = 10) -> List[Dict]:
+        """指定されたセッションの会話履歴を取得"""
+        if not self.initialize():
             return []
         
         try:
-            recent_turns = _self._memory_client.get_last_k_turns(
-                memory_id=_self._memory_id,
+            if not self._memory_client or not self._memory_id:
+                return []
+                
+            recent_turns = self._memory_client.get_last_k_turns(
+                memory_id=self._memory_id,
                 actor_id="user_1",
                 session_id=session_id,
                 k=k
@@ -87,6 +89,9 @@ class StreamlitMemoryManager:
             return []
         
         try:
+            if not self._agentcore_client:
+                return []
+                
             response = self._agentcore_client.list_sessions(
                 memoryId=self._memory_id,
                 actorId="user_1",
@@ -116,17 +121,19 @@ def get_memory_manager() -> StreamlitMemoryManager:
 
 
 # 後方互換性のための関数
-def initialize_memory_client():
+def initialize_memory_client() -> bool:
     """後方互換性のための関数"""
     manager = get_memory_manager()
     return manager.initialize()
 
+@st.cache_data(ttl=10, show_spinner=False)
 def get_session_history(session_id: str, k: int = 10) -> List[Dict]:
-    """後方互換性のための関数"""
+    """後方互換性のための関数（キャッシュ付き）"""
     manager = get_memory_manager()
     return manager.get_session_history(session_id, k)
 
+@st.cache_data(ttl=30, show_spinner=False)
 def get_available_sessions() -> List[str]:
-    """後方互換性のための関数"""
+    """後方互換性のための関数（キャッシュ付き）"""
     manager = get_memory_manager()
     return manager.get_available_sessions()

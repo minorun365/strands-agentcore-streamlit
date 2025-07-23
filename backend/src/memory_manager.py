@@ -1,5 +1,5 @@
 from bedrock_agentcore.memory import MemoryClient
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import os
 import logging
 
@@ -40,15 +40,17 @@ class UnifiedMemoryManager:
                 # 新しいメモリを作成
                 memory_role_arn = os.environ.get('MEMORY_EXECUTION_ROLE_ARN')
                 
-                memory_config = {
-                    "name": "ChatHistoryMemory",
-                    "description": "Chat history memory for demo app"
-                }
-                
                 if memory_role_arn:
-                    memory_config["memory_execution_role_arn"] = memory_role_arn
-                
-                memory = self._memory_client.create_memory(**memory_config)
+                    memory = self._memory_client.create_memory(
+                        name="ChatHistoryMemory",
+                        description="Chat history memory for demo app",
+                        memory_execution_role_arn=memory_role_arn
+                    )
+                else:
+                    memory = self._memory_client.create_memory(
+                        name="ChatHistoryMemory",
+                        description="Chat history memory for demo app"
+                    )
                 self._memory_id = memory.get('id')
                 logger.info(f"新しいメモリを作成: {self._memory_id}")
             
@@ -67,6 +69,9 @@ class UnifiedMemoryManager:
         if not self.initialize():
             return False
         
+        if not self._memory_client or not self._memory_id:
+            return False
+        
         try:
             self._memory_client.create_event(
                 memory_id=self._memory_id,
@@ -82,9 +87,12 @@ class UnifiedMemoryManager:
             logger.error(f"会話保存エラー: {e}")
             return False
     
-    def get_conversation_history(self, session_id: str, k: int = 5) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, session_id: str, k: int = 5) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """過去の会話履歴を取得"""
         if not self.initialize():
+            return []
+        
+        if not self._memory_client or not self._memory_id:
             return []
         
         try:
@@ -114,7 +122,9 @@ class UnifiedMemoryManager:
                 if isinstance(item, list):
                     for msg in item:
                         if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                            formatted_messages.append(f"{msg['role']}: {msg['content']}")
+                            role = msg.get('role', '')
+                            content = msg.get('content', '')
+                            formatted_messages.append(f"{role}: {content}")
                 elif isinstance(item, dict):
                     if 'messages' in item:
                         for msg in item['messages']:
