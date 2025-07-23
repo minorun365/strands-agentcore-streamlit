@@ -38,12 +38,9 @@ class AWSKnowledgeAgentManager:
         """AWSナレッジクエリ処理"""
         if not self.mcp_client:
             return "処理に失敗しました"
-        try:
-            return await self.stream_processor.process_query_with_context(
-                query, self.mcp_client, self.create_agent
-            )
-        except Exception:
-            return "処理に失敗しました"
+        return await self.stream_processor.process_query_with_context(
+            query, self.mcp_client, self.create_agent
+        )
 
 # グローバルインスタンス
 _knowledge_manager = AWSKnowledgeAgentManager()
