@@ -12,42 +12,29 @@ class StreamProcessor:
     def set_parent_queue(self, queue: Optional[asyncio.Queue]) -> None:
         self.parent_stream_queue = queue
     
-    async def notify_start(self) -> None:
-        """サブエージェント開始を通知"""
-        if self.parent_stream_queue:
-            await self.parent_stream_queue.put({
-                "event": {
-                    "subAgentProgress": {
-                        "message": f"サブエージェント「{self.agent_name}」が呼び出されました",
-                        "stage": "start"
-                    }
+    async def _notify(self, message: str, stage: str, tool_name: Optional[str] = None) -> None:
+        """サブエージェント状態を通知"""
+        if not self.parent_stream_queue: return
+        event = {
+            "event": {
+                "subAgentProgress": {
+                    "message": message,
+                    "stage": stage
                 }
-            })
+            }
+        }
+        if tool_name:
+            event["event"]["subAgentProgress"]["tool_name"] = tool_name
+        await self.parent_stream_queue.put(event)
+    
+    async def notify_start(self) -> None:
+        await self._notify(f"サブエージェント「{self.agent_name}」が呼び出されました", "start")
     
     async def notify_complete(self) -> None:
-        """サブエージェント完了を通知"""
-        if self.parent_stream_queue:
-            await self.parent_stream_queue.put({
-                "event": {
-                    "subAgentProgress": {
-                        "message": f"サブエージェント「{self.agent_name}」が調査を完了しました",
-                        "stage": "complete"
-                    }
-                }
-            })
+        await self._notify(f"サブエージェント「{self.agent_name}」が調査を完了しました", "complete")
     
     async def notify_tool_use(self, tool_name: str) -> None:
-        """ツール使用を通知"""
-        if self.parent_stream_queue:
-            await self.parent_stream_queue.put({
-                "event": {
-                    "subAgentProgress": {
-                        "message": f"サブエージェント「{self.agent_name}」がツール「{tool_name}」を実行中",
-                        "stage": "tool_use",
-                        "tool_name": tool_name
-                    }
-                }
-            })
+        await self._notify(f"サブエージェント「{self.agent_name}」がツール「{tool_name}」を実行中", "tool_use", tool_name)
     
     async def process_agent_stream(self, agent_stream) -> str:
         """エージェントストリームを処理"""
