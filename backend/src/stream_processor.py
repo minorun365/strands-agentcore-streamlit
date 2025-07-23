@@ -1,8 +1,5 @@
 import asyncio
-import logging
 from typing import Optional
-
-logger = logging.getLogger(__name__)
 
 class StreamProcessor:
     """サブエージェント用シンプルストリーム処理"""
@@ -67,6 +64,15 @@ class StreamProcessor:
                         })
                 elif isinstance(event, dict) and "event" in event:
                     event_data = event["event"]
+                    
+                    # ツール使用の検出と通知
+                    if "contentBlockStart" in event_data:
+                        start_data = event_data["contentBlockStart"].get("start", {})
+                        if "toolUse" in start_data:
+                            tool_info = start_data["toolUse"]
+                            tool_name = tool_info.get("name", "unknown")
+                            await self.notify_tool_use(tool_name)
+                    
                     if "contentBlockDelta" in event_data:
                         delta = event_data["contentBlockDelta"].get("delta", {})
                         if "text" in delta:

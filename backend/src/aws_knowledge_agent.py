@@ -19,14 +19,11 @@ class AWSKnowledgeAgentManager:
         self._initialize_mcp_client()
     
     def _initialize_mcp_client(self) -> None:
-        """MCP クライアントを初期化"""
         try:
             self.mcp_client = MCPClient(
                 lambda: streamablehttp_client("https://knowledge-mcp.global.api.aws")
             )
-            logger.info("AWS Knowledge MCP クライアント初期化成功")
-        except Exception as e:
-            logger.error(f"AWS Knowledge MCP クライアント初期化失敗: {e}")
+        except Exception:
             self.mcp_client = None
     
     def set_parent_stream_queue(self, queue: Optional[asyncio.Queue]) -> None:
@@ -45,18 +42,13 @@ class AWSKnowledgeAgentManager:
         )
     
     async def process_query(self, query: str) -> str:
-        """クエリを処理してレスポンスを返す"""
         if not self.mcp_client:
             return "AWS Knowledge MCP client is not available"
-        
         try:
             return await self.stream_processor.process_query_with_context(
-                query, 
-                self.mcp_client, 
-                self.create_agent
+                query, self.mcp_client, self.create_agent
             )
-        except Exception as e:
-            logger.error(f"AWS Knowledge エージェント処理エラー: {e}")
+        except Exception:
             return "AWS Knowledge MCP client is not available"
     
     @property

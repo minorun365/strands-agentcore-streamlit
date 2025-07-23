@@ -28,7 +28,6 @@ agent_manager = AgentManager()
 async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     input_data = payload.get("input", {})
     user_message = input_data.get("prompt", "")
-    session_id = input_data.get("session_id", "default_session")
     parent_stream_queue = asyncio.Queue()
     set_knowledge_queue(parent_stream_queue)
     set_holiday_queue(parent_stream_queue)
