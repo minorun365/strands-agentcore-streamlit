@@ -48,64 +48,19 @@ def get_session_history(session_id: str, k: int = 10) -> List[Dict]:
             k=k
         )
         
-        # フロントエンド用に履歴を整形
+        # フロントエンド用に履歴を整形（シンプル版）
         formatted_history = []
         if recent_turns:
             for item in reversed(recent_turns):
-                # get_last_k_turnsの場合：各アイテムがメッセージのリスト
                 if isinstance(item, list):
                     for msg in item:
                         if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
                             content = msg['content']
-                            if isinstance(content, dict):
-                                content_text = content.get('text', str(content))
-                            else:
-                                content_text = str(content)
-                                
+                            content_text = content.get('text', str(content)) if isinstance(content, dict) else str(content)
                             formatted_history.append({
                                 'role': msg['role'].lower(),
-                                'content': content_text,
-                                'timestamp': None
+                                'content': content_text
                             })
-                
-                # イベント構造の場合
-                elif isinstance(item, dict):
-                    if 'messages' in item:
-                        messages = item['messages']
-                        for msg in messages:
-                            if isinstance(msg, tuple) and len(msg) >= 2:
-                                content, role = msg[0], msg[1]
-                                formatted_history.append({
-                                    'role': role.lower(),
-                                    'content': str(content),
-                                    'timestamp': None
-                                })
-                            elif isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                                content = msg['content']
-                                if isinstance(content, dict):
-                                    content_text = content.get('text', str(content))
-                                else:
-                                    content_text = str(content)
-                                    
-                                formatted_history.append({
-                                    'role': msg['role'].lower(),
-                                    'content': content_text,
-                                    'timestamp': None
-                                })
-                    
-                    # 直接的なメッセージ辞書の場合
-                    elif 'role' in item and 'content' in item:
-                        content = item['content']
-                        if isinstance(content, dict):
-                            content_text = content.get('text', str(content))
-                        else:
-                            content_text = str(content)
-                            
-                        formatted_history.append({
-                            'role': item['role'].lower(),
-                            'content': content_text,
-                            'timestamp': None
-                        })
         
         return formatted_history
         
@@ -114,8 +69,8 @@ def get_session_history(session_id: str, k: int = 10) -> List[Dict]:
         return []
 
 def get_available_sessions() -> List[str]:
-    """利用可能なセッション一覧を取得（Boto3 AgentCore client使用）"""
-    global _memory_client, _memory_id, _agentcore_client
+    """利用可能なセッション一覧を取得"""
+    global _agentcore_client, _memory_id
     
     if not initialize_memory_client():
         return []
@@ -127,12 +82,10 @@ def get_available_sessions() -> List[str]:
             maxResults=100
         )
         
-        sessions = []
         if 'sessionSummaries' in response:
-            basic_sessions = [summary['sessionId'] for summary in response['sessionSummaries']]
-            sessions = list(reversed(basic_sessions))  # 新しい順にソート
-        
-        return sessions
+            sessions = [summary['sessionId'] for summary in response['sessionSummaries']]
+            return list(reversed(sessions))  # 新しい順にソート
+        return []
         
     except Exception:
         return []

@@ -83,19 +83,6 @@ def get_conversation_history(session_id: str, k: int = 5):
                 k=k
             )
             
-            # 結果が空の場合、list_eventsも試してみる
-            if not recent_turns or len(recent_turns) == 0:
-                try:
-                    events = memory_client.list_events(
-                        memory_id=MEMORY_ID,
-                        actor_id="user_1",
-                        session_id=session_id,
-                        max_results=k * 2
-                    )
-                    if events:
-                        return events
-                except Exception:
-                    pass
             
             return recent_turns
             

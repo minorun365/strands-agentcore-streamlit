@@ -58,94 +58,55 @@ class StreamProcessor:
     
     async def _handle_content_block_start(self, event_data: dict) -> None:
         """contentBlockStart イベントの処理"""
-        logger.debug(f"[{self.agent_name}] contentBlockStart: {event_data}")
         start_data = event_data["contentBlockStart"].get("start", {})
         
         if "toolUse" in start_data:
             tool_info = start_data["toolUse"]
             tool_name = tool_info.get("name", "unknown")
-            tool_id = tool_info.get("toolUseId", "unknown")
-            logger.debug(f"[{self.agent_name}] Tool use started: {tool_name} (ID: {tool_id})")
             await self.notify_tool_use(tool_name)
         
-        # イベントを親ストリームに転送
         if self.parent_stream_queue:
-            await self.parent_stream_queue.put({
-                "event": event_data
-            })
+            await self.parent_stream_queue.put({"event": event_data})
     
     async def _handle_content_block_delta(self, event_data: dict) -> None:
         """contentBlockDelta イベントの処理"""
         delta = event_data["contentBlockDelta"].get("delta", {})
-        logger.debug(f"[{self.agent_name}] contentBlockDelta: {list(delta.keys())}")
         
-        # ツール入力の場合は転送のみ（テキスト蓄積はしない）
         if "toolUse" in delta:
-            logger.debug(f"[{self.agent_name}] Tool input delta: {delta}")
             if self.parent_stream_queue:
-                await self.parent_stream_queue.put({
-                    "event": event_data
-                })
+                await self.parent_stream_queue.put({"event": event_data})
             return
             
         if "text" in delta:
             text = delta["text"]
             self.accumulated_response += text
-            # サブエージェントのテキストを即座に送信
             if self.parent_stream_queue:
                 await self.parent_stream_queue.put({
                     "event": {
                         "contentBlockDelta": {
-                            "delta": {
-                                "text": text
-                            }
+                            "delta": {"text": text}
                         }
                     }
                 })
     
     async def _handle_content_block_stop(self, event_data: dict) -> None:
         """contentBlockStop イベントの処理（ツール実行完了など）"""
-        logger.debug(f"[{self.agent_name}] Handling contentBlockStop: {event_data}")
-        # このイベントはツール実行完了を示すため、そのまま転送
         if self.parent_stream_queue:
-            await self.parent_stream_queue.put({
-                "event": event_data
-            })
+            await self.parent_stream_queue.put({"event": event_data})
 
     async def _handle_dict_event(self, event: dict) -> None:
         """辞書型イベントの処理"""
-        # デバッグ用：全イベントをログ出力
-        logger.debug(f"[{self.agent_name}] Processing event: {event}")
         
         if "event" in event:
             event_data = event["event"]
             
-            # ツール使用開始を即座に検出して送信
             if "contentBlockStart" in event_data:
                 await self._handle_content_block_start(event_data)
-            
-            # テキストデルタを処理（ツール実行中でない場合のみ）
             elif "contentBlockDelta" in event_data:
                 await self._handle_content_block_delta(event_data)
-            
-            # ツール実行完了イベントの処理を追加
             elif "contentBlockStop" in event_data:
                 await self._handle_content_block_stop(event_data)
-            
-            # messageStart, messageStop, その他のイベントを処理
-            elif "messageStart" in event_data:
-                logger.debug(f"[{self.agent_name}] Message started")
-                if self.parent_stream_queue:
-                    await self.parent_stream_queue.put(event)
-            
-            elif "messageStop" in event_data:
-                logger.debug(f"[{self.agent_name}] Message stopped: {event_data}")
-                if self.parent_stream_queue:
-                    await self.parent_stream_queue.put(event)
-            
-            # その他のイベント（toolResult等）も即座に転送
             else:
-                logger.debug(f"[{self.agent_name}] Forwarding other event: {list(event_data.keys())}")
                 if self.parent_stream_queue:
                     await self.parent_stream_queue.put(event)
     
@@ -167,22 +128,16 @@ class StreamProcessor:
         """エージェントストリームの共通処理"""
         self.accumulated_response = ""
         
-        # サブエージェント開始を即座に通知
         await self.notify_start()
         
         try:
-            # エージェントのストリーミング回答を取得
             async for event in agent_stream:
-                # まず即座にイベントを親ストリームに転送（リアルタイム性確保）
                 if isinstance(event, dict) and "event" in event:
                     await self._handle_dict_event(event)
                 elif isinstance(event, str):
                     await self._handle_string_event(event)
             
-            # 最終的な結果を親ストリームに送信
             await self.notify_complete()
-            
-            # 最終的な応答を返す
             return self.accumulated_response
             
         except Exception:

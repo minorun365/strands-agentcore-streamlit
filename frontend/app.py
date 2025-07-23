@@ -5,7 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 # カスタムモジュールのインポート
-from session_manager import initialize_session_state, render_sidebar, render_chat_history, add_message_to_thread, update_thread_title, auto_generate_title
+from session_manager import initialize_session_state, render_sidebar, render_chat_history, add_message_to_thread
 from stream_processor import process_stream_interactive
 
 # 環境変数をロード
@@ -33,17 +33,12 @@ if user_message := st.chat_input("メッセージを入力してください"):
     with st.chat_message("user"):
         st.markdown(user_message)
     
-    # ユーザーメッセージをセッションに追加
+    # ユーザーメッセージをセッションに追加（タイトル自動更新込み）
     add_message_to_thread(
         st.session_state.current_thread_id, 
         'user', 
         user_message
     )
-    
-    # ユーザーが質問した時点で、タイトルを即座に更新（AI応答中のスレッド切り替えに対応）
-    if st.session_state.current_thread_title == "現在の会話":
-        title = auto_generate_title(user_message)
-        update_thread_title(st.session_state.current_thread_id, title)
     
     # アシスタントの応答を表示
     with st.chat_message("assistant"):

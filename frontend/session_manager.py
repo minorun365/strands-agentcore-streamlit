@@ -3,12 +3,6 @@ import uuid
 from datetime import datetime
 from memory_helper import get_session_history
 
-def generate_session_id():
-    """新しいセッションIDを生成（AgentCore Runtime要件を満たす33文字以上）"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = str(uuid.uuid4())[:12]
-    session_id = f"session_{timestamp}_{unique_id}"
-    return session_id
 
 def initialize_session_state():
     """セッション状態の初期化"""
@@ -22,7 +16,10 @@ def initialize_session_state():
     # セッションID（可変：新しい会話ごとに生成）
     if 'current_thread_id' not in st.session_state:
         # リロード後は常に新規セッションで開始
-        st.session_state.current_thread_id = generate_session_id()
+        # 新しいセッションIDを生成
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:12]
+        st.session_state.current_thread_id = f"session_{timestamp}_{unique_id}"
         
         # 初期の「現在の会話」をサイドバーに表示するため、threadsに追加
         st.session_state.threads[st.session_state.current_thread_id] = {
@@ -54,7 +51,10 @@ def create_new_thread():
         len(st.session_state.threads[st.session_state.current_thread_id]['messages']) == 0):
         return st.session_state.current_thread_id
     
-    new_session_id = generate_session_id()
+    # 新しいセッションIDを生成
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:12]
+    new_session_id = f"session_{timestamp}_{unique_id}"
     st.session_state.current_thread_id = new_session_id
     st.session_state.current_thread_title = "現在の会話"
     
@@ -79,10 +79,6 @@ def create_new_thread():
     
     return new_session_id
 
-def switch_to_thread(thread_id, thread_title):
-    """指定されたスレッドに切り替え"""
-    st.session_state.current_thread_id = thread_id
-    st.session_state.current_thread_title = thread_title
 
 def add_message_to_thread(thread_id, role, content):
     """スレッドにメッセージを追加"""
@@ -97,6 +93,15 @@ def add_message_to_thread(thread_id, role, content):
         'content': content,
         'timestamp': datetime.now().isoformat()
     })
+    
+    # ユーザーの最初のメッセージでタイトル候補を準備（即座にcurrent_thread_titleを更新）
+    if role == 'user' and st.session_state.threads[thread_id]['title'] == '現在の会話':
+        title = content[:47] + "..." if len(content) > 50 else content
+        # サイドバーでのリアルタイム表示用にcurrent_thread_titleを即座に更新
+        if thread_id == st.session_state.current_thread_id:
+            st.session_state.current_thread_title = title
+        # threads辞書も更新
+        st.session_state.threads[thread_id]['title'] = title
 
 def update_thread_title(thread_id, title):
     """スレッドのタイトルを更新"""
@@ -129,13 +134,21 @@ def render_sidebar():
                 # 現在のスレッドかどうかでスタイルを変更
                 is_current = thread_id == st.session_state.current_thread_id
                 
+                # 現在のスレッドの場合、リアルタイムでタイトルを反映
+                if is_current:
+                    display_title = st.session_state.current_thread_title
+                else:
+                    display_title = thread_data['title']
+                
                 if st.button(
-                    f"{thread_data['title'][:30]}{'...' if len(thread_data['title']) > 30 else ''}",
+                    f"{display_title[:30]}{'...' if len(display_title) > 30 else ''}",
                     key=f"thread_{thread_id}",
                     use_container_width=True,
                     type="primary" if is_current else "secondary"
                 ):
-                    switch_to_thread(thread_id, thread_data['title'])
+                    # スレッド切り替え
+                    st.session_state.current_thread_id = thread_id
+                    st.session_state.current_thread_title = thread_data['title']
                     st.rerun()
 
 def render_chat_history():
@@ -171,11 +184,7 @@ def restore_session_from_memory():
         })
         
         # 各セッションを復元
-        from collections import OrderedDict
-        temp_threads = OrderedDict()
-        
-        # 最初に現在の会話を追加
-        temp_threads[current_new_thread_id] = current_new_thread
+        temp_threads = {current_new_thread_id: current_new_thread}
         
         for session_id in available_sessions:
             try:
@@ -192,7 +201,8 @@ def restore_session_from_memory():
                     thread_title = f"セッション {session_id[:8]}..."
                     for msg in session_history:
                         if msg['role'] == 'user':
-                            thread_title = auto_generate_title(msg['content'])
+                            # タイトル自動生成
+                            thread_title = msg['content'][:47] + "..." if len(msg['content']) > 50 else msg['content']
                             break
                     
                     temp_threads[thread_id] = {
@@ -203,14 +213,8 @@ def restore_session_from_memory():
             except Exception:
                 continue
         
-        st.session_state.threads = dict(temp_threads)
+        st.session_state.threads = temp_threads
         
     except Exception:
         pass
 
-def auto_generate_title(user_message):
-    """ユーザーメッセージから自動的にタイトルを生成"""
-    # シンプルなタイトル生成ロジック
-    if len(user_message) > 50:
-        return user_message[:47] + "..."
-    return user_message
