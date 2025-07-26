@@ -1,10 +1,10 @@
 import asyncio, boto3
 import streamlit as st
 from dotenv import load_dotenv
-from stream_processor import process_stream_interactive
+from stream_processor import process_stream
 
 load_dotenv()
-agent_core_client = boto3.client('bedrock-agentcore')
+agent_core = boto3.client('bedrock-agentcore')
 
 # セッション状態初期化
 if 'messages' not in st.session_state:
@@ -20,16 +20,16 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ユーザー入力処理
-if user_message := st.chat_input("メッセージを入力してください"):
+if prompt := st.chat_input("メッセージを入力してください"):
     with st.chat_message("user"):
-        st.markdown(user_message)
-    st.session_state.messages.append({"role": "user", "content": user_message})
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
     
     # アシスタントレスポンス
     with st.chat_message("assistant"):
-        main_container = st.container()
+        container = st.container()
         try:
-            final_response = asyncio.run(process_stream_interactive(user_message, main_container, agent_core_client))
+            final_response = asyncio.run(process_stream(prompt, container, agent_core))
             if final_response:
                 st.session_state.messages.append({"role": "assistant", "content": final_response})
         except Exception as e:
