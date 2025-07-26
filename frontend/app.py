@@ -11,8 +11,8 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 # UI表示
-st.title("Strands on AgentCore")
-st.write("AWSのことなら何でも聞いてね！")
+st.title("AWSアカウント調査くん")
+st.write("あなたのAWSアカウント操作をAPIで代行するよ！")
 
 # メッセージ履歴表示
 for message in st.session_state.messages:

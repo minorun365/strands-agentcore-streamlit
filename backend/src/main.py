@@ -1,28 +1,24 @@
+import asyncio
+from typing import AsyncGenerator, Any, Dict
 from strands import Agent
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from dotenv import load_dotenv
-from typing import AsyncGenerator, Any, Dict
-import asyncio
-from .aws_knowledge_agent import aws_knowledge_agent, set_parent_stream_queue as set_knowledge_queue
-from .japanese_holiday_agent import japanese_holiday_agent, set_parent_stream_queue as set_holiday_queue
-load_dotenv()
+from .sub_agents import aws_knowledge_agent, aws_api_agent, set_knowledge_queue, set_api_queue
 
-class AgentManager:
-    """Strandsエージェント管理クラス"""
+class AgentOrchestrator:
+    """Strandsエージェント オーケストレーター"""
     def __init__(self):
         self.agent = Agent(
             model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            tools=[aws_knowledge_agent, japanese_holiday_agent],
-            system_prompt="""あなたは2つの専門サブエージェントを活用するAWSエキスパートです：
+            tools=[aws_knowledge_agent, aws_api_agent],
+            system_prompt="""あなたは2つのサブエージェントを活用するAWSエキスパートです：
 1. AWSナレッジエージェント: AWS公式ドキュメントから一般的な情報を検索
-2. 祝日APIエージェント: 日本の祝日情報を提供（デモ用シンプルAPI）
-効率的にサブエージェントを使い分けて、正確で実用的な回答を提供してください。""",
-            callback_handler=None
+2. AWS APIエージェント: AWSアカウント内のリソースをAPI経由で操作・確認
+AWS API操作を行う前に、必ずAWSナレッジエージェントで情報収集してください。"""
         )
 
 # BedrockAgentCoreアプリケーション初期化
 app = BedrockAgentCoreApp()
-agent_manager = AgentManager()
+orchestrator = AgentOrchestrator()
 
 @app.entrypoint
 async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
@@ -32,10 +28,10 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     # サブエージェント用キュー初期化
     parent_stream_queue = asyncio.Queue()
     set_knowledge_queue(parent_stream_queue)
-    set_holiday_queue(parent_stream_queue)
+    set_api_queue(parent_stream_queue)
     
     try:
-        agent_stream = agent_manager.agent.stream_async(user_message)
+        agent_stream = orchestrator.agent.stream_async(user_message)
         
         async def merged_stream():
             """メインストリームとサブエージェントストリームを統合"""
@@ -44,8 +40,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
             pending_tasks = {agent_task, queue_task}
             
             while pending_tasks:
-                completed_tasks, pending_tasks = await asyncio.wait(pending_tasks, return_when=asyncio.FIRST_COMPLETED)
-                
+                completed_tasks, pending_tasks = await asyncio.wait(pending_tasks, return_when=asyncio.FIRST_COMPLETED)                
                 for completed_task in completed_tasks:
                     if completed_task == agent_task:
                         event = completed_task.result()
@@ -73,7 +68,7 @@ async def invoke(payload: Dict[str, Any]) -> AsyncGenerator[Any, None]:
     finally:
         # キュークリーンアップ
         set_knowledge_queue(None)
-        set_holiday_queue(None)
+        set_api_queue(None)
 
 if __name__ == "__main__":
     app.run()
