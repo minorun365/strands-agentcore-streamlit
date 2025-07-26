@@ -43,6 +43,9 @@ class StreamlitStreamProcessor:
         
         # テキストプレースホルダーをリセット
         self.current_text_placeholder = None
+        
+        # 全てのステータス表示の際にレスポンステキストをリセット
+        self.final_response = ""
     
     def _handle_content_delta(self, event, container):
         """テキストデルタ処理"""
@@ -83,6 +86,7 @@ class StreamlitStreamProcessor:
         """ストリームデータ処理"""
         if not isinstance(data, dict): return
         event = data.get("event", {})
+        
         if "subAgentProgress" in event:
             self._handle_sub_agent_progress(event, container)
         elif "contentBlockDelta" in event:

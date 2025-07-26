@@ -62,7 +62,7 @@ cd backend
 pip install strands-agents=1.0.1 bedrock-agentcore==0.1.0 bedrock-agentcore-starter-toolkit==0.1.1
 
 # ビルド
-agentcore configure --entrypoint src/server.py -er <IAMロールのARN>
+agentcore configure --entrypoint src/main.py -er <IAMロールのARN>
 
 # デプロイ
 agentcore launch --codebuild
